@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime as dt
 
 
 def year(request):
@@ -6,7 +6,7 @@ def year(request):
     return {
         'year': int(
             str(
-                datetime.datetime.now()
-            )[0:4]
+                dt.now().year
+            )
         )
     }

@@ -10,9 +10,6 @@ class PostForm(forms.ModelForm):
 
     def clean_text(self):
         data = self.cleaned_data['text']
-
-        if '' == data.lower():
-            raise forms.ValidationError('Зачем нужен пустой пост?')
         return data
 
 
@@ -23,7 +20,4 @@ class CommentForm(forms.ModelForm):
 
     def clean_text(self):
         data = self.cleaned_data['text']
-
-        if '' == data.lower():
-            raise forms.ValidationError('Зачем нужен пустой комментарий?')
         return data

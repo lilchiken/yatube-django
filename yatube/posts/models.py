@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q, F
 from django.contrib.auth import get_user_model
 
 from core.models import CreatedModel
@@ -32,7 +33,6 @@ class Post(CreatedModel):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='posts',
         null=True,
         verbose_name='Автор'
     )
@@ -41,7 +41,6 @@ class Post(CreatedModel):
         on_delete=models.SET_NULL,
         blank=True,
         null=True,
-        related_name='posts',
         help_text='По желанию, вы можете выбрать группу',
         verbose_name='Группа'
     )
@@ -55,6 +54,7 @@ class Post(CreatedModel):
         ordering = ['-created']
         verbose_name = 'Пост'
         verbose_name_plural = 'Посты'
+        default_related_name = 'posts'
 
     def __str__(self):
         return self.text[:15]
@@ -64,19 +64,20 @@ class Comment(CreatedModel):
     post = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
-        related_name='comments',
         verbose_name='Пост'
     )
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='comments',
         verbose_name='Автор'
     )
     text = models.TextField(
         verbose_name='Текст',
         help_text='Напишите комментарий...'
     )
+
+    class Meta:
+        default_related_name = 'comments'
 
 
 class Follow(models.Model):
@@ -90,3 +91,17 @@ class Follow(models.Model):
         on_delete=models.CASCADE,
         related_name='following'
     )
+
+    # class Meta:
+    #     constraints = [
+    #         # models.CheckConstraint(
+    #         #     name='check_not_follow_yourself',
+    #         #     check=models.Q(user=models.Q('author'))
+    #         # ),
+    #         models.UniqueConstraint(
+    #             name='unique_follow',
+    #             fields=['user', 'author'],
+    #             condition=Q(status='DRAFT')
+    #         )
+    #     ]
+#     не получается :(

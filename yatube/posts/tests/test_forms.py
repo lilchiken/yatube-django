@@ -63,8 +63,8 @@ class FormsTest(TestCase):
             post.text: data['text'],
             post.group: FormsTest.group,
             post.author: FormsTest.user,
+            post.image.name: f'posts/{uploaded.name}'
         }
-        self.assertIn(uploaded.name, post.image.name)
         for attrs, excepted in attrs_equal.items():
             with self.subTest(atrs=attrs):
                 self.assertEqual(attrs, excepted)
@@ -96,9 +96,9 @@ class FormsTest(TestCase):
         attrs_equal = {
             new_post.text: data['text'],
             new_post.group: FormsTest.group,
-            new_post.author: FormsTest.user
+            new_post.author: FormsTest.user,
+            new_post.image: f'posts/{uploaded.name}'
         }
-        self.assertIn(uploaded.name, new_post.image.name)
         for attr, excepted in attrs_equal.items():
             with self.subTest(attr=attr, exc=excepted):
                 self.assertEqual(attr, excepted)
@@ -118,4 +118,4 @@ class FormsTest(TestCase):
             data=data
         )
         new_post.refresh_from_db()
-        self.assertEqual(len(new_post.comments.all()), 0)
+        self.assertEqual(new_post.comments.count(), 0)

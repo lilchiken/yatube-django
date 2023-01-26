@@ -3,6 +3,8 @@ from django.test import TestCase
 from posts.models import Group, Post, User
 
 
+# не охота) если посудить, мы же проверяем функционал джанго,
+# зачем его проверять? (verbose_name, help_text и т.д.)
 class PostModelTest(TestCase):
     @classmethod
     def setUpClass(cls):

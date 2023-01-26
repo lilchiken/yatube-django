@@ -39,12 +39,10 @@ class StaticURLTests(TestCase):
         self.authorized_client.force_login(StaticURLTests.user)
 
     def test_guest_roots(self):
-        with self.assertRaises(Resolver404):
-            resolve('404')
-            self.assertEqual(
-                self.authorized_client.get('404').response_code,
-                HTTPStatus.NOT_FOUND
-            )
+        self.assertEqual(
+            self.authorized_client.get('404').status_code,
+            HTTPStatus.NOT_FOUND
+        )
         for url in self.URLS_TEMPLATES_FOR_GUEST:
             with self.subTest(url=url):
                 response = self.guest_client.get(url)
@@ -78,12 +76,10 @@ class StaticURLTests(TestCase):
         self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_used_templates(self):
-        with self.assertRaises(Resolver404):
-            resolve('404')
-            self.assertTemplateUsed(
-                self.authorized_client.get('404'),
-                'core/404.html'
-            )
+        self.assertTemplateUsed(
+            self.authorized_client.get('404'),
+            'core/404.html'
+        )
         new_dict = {**self.URLS_TEMPLATES_FOR_USER,
                     **self.URLS_TEMPLATES_FOR_GUEST}
         for url, template in new_dict.items():

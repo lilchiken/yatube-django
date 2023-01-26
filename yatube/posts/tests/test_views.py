@@ -2,6 +2,8 @@ import tempfile
 import shutil
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.cache import cache
+from django.core.paginator import Page
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.conf import settings
@@ -30,6 +32,7 @@ class PostPagesTest(TestCase):
                                            content_type='image/gif')
         cls.user = User.objects.create_user(username='test')
         cls.user_for_delete = User.objects.create_user(username='delete')
+        cls.user_for_follow = User.objects.create_user(username='follower')
         cls.group = Group.objects.create(
             title='test group',
             slug='test'
@@ -76,7 +79,8 @@ class PostPagesTest(TestCase):
         attrs = {
             obj.text: PostPagesTest.post.text,
             obj.group: PostPagesTest.post.group,
-            obj.author: PostPagesTest.post.author
+            obj.author: PostPagesTest.post.author,
+            obj.image: PostPagesTest.post.image
         }
         return attrs
 
@@ -110,23 +114,19 @@ class PostPagesTest(TestCase):
                 response = self.authorized_client.get(reverse_name)
                 self.assertTemplateUsed(response, template)
 
-    # def test_context_main(self):
-    #     response = self.authorized_client.get(reverse('posts:main'))
-    #     print(response.__dict__)
-    #     self.assertIn(
-    #         response.content['page_obj'], PostPagesTest.post
-    #     )
-    #     self.assertIsInstance(response.content['page_obj'],
-    #                           Page)
-    #     self.assertIsInstance(response.content['page_obj'][0],
-    #                           Post)
-    #     self.assertIn(PostPagesTest.small_gif.name,
-    #                   response.content['page_obj'][0].image.name)
-    #     obj = response.context['page_obj'][0]
-    #     for test_atr, excepted_atr in self.set_dict(obj).items():
-    #         with self.subTest(test_atr=test_atr):
-    #             self.assertEqual(test_atr, excepted_atr)
-    # Всё поломалось после кэша...
+    def test_context_main(self):
+        response = self.authorized_client.get(reverse('posts:main'))
+        self.assertIn(
+            PostPagesTest.post, response.context['page_obj']
+        )
+        self.assertIsInstance(response.context['page_obj'],
+                              Page)
+        self.assertIsInstance(response.context['page_obj'][1],
+                              Post)
+        obj = response.context['page_obj'][1]
+        for test_atr, excepted_atr in self.set_dict(obj).items():
+            with self.subTest(test_atr=test_atr):
+                self.assertEqual(test_atr, excepted_atr)
 
     def test_cache_main(self):
         response = self.authorized_client.get(reverse('posts:main'))
@@ -134,6 +134,10 @@ class PostPagesTest(TestCase):
         PostPagesTest.user_for_delete.delete()
         content_after_delete = response.content
         self.assertEqual(content_after_delete, content_before_delete)
+        cache.clear()
+        response = self.authorized_client.get(reverse('posts:main'))
+        content_after_cache_clear = response.content
+        self.assertNotEqual(content_after_cache_clear, content_before_delete)
 
     def test_context_group(self):
         response = self.authorized_client.get(reverse(
@@ -163,7 +167,7 @@ class PostPagesTest(TestCase):
         self.smart_test_context(
             response,
             [self.assertIn, {'page_obj': PostPagesTest.post}],
-            [self.assertEqual, {'username': PostPagesTest.user}]
+            [self.assertEqual, {'profile_author': PostPagesTest.user}]
         )
         self.assertIsInstance(response.context['page_obj'][0],
                               Post)
@@ -237,54 +241,63 @@ class PostPagesTest(TestCase):
                                  {'page_obj': PostPagesTest.post}])
 
     def test_follow_users(self):
-        new_user = User.objects.create_user(
-            username='new test user'
+        follow = Follow.objects.filter(
+            user=PostPagesTest.user,
+            author=PostPagesTest.user_for_follow
         )
+        self.assertFalse(follow.exists())
         self.authorized_client.get(reverse(
             'posts:profile_follow',
-            kwargs={'username': new_user.username}
+            kwargs={'username': PostPagesTest.user_for_follow.username}
         ))
-        self.assertIsNotNone(
-            Follow.objects.filter(
-                user=PostPagesTest.user,
-                author=new_user
-            ).first()
+        self.assertTrue(follow.exists())
+        follow.delete()
+
+    def test_unfollow_users(self):
+        Follow.objects.create(
+            user=PostPagesTest.user,
+            author=PostPagesTest.user_for_follow
         )
         self.authorized_client.get(reverse(
             'posts:profile_unfollow',
-            kwargs={'username': new_user.username}
+            kwargs={'username': PostPagesTest.user_for_follow.username}
         ))
-        self.assertIsNone(
+        self.assertFalse(
             Follow.objects.filter(
                 user=PostPagesTest.user,
-                author=new_user
-            ).first()
+                author=PostPagesTest.user_for_follow
+            ).exists()
         )
 
     def test_new_post_followers(self):
-        new_user = User.objects.create_user(
-            username='new test user'
+        follow = Follow.objects.create(
+            user=PostPagesTest.user,
+            author=PostPagesTest.user_for_follow
         )
-        self.authorized_client.get(reverse(
-            'posts:profile_follow',
-            kwargs={'username': new_user.username}
-        ))
         post = Post.objects.create(
             text='test text',
-            author=new_user
+            author=PostPagesTest.user_for_follow
         )
-        response = self.authorized_client.get(reverse(
-            'posts:follow_index'
-        ))
-        self.assertIn(post,
-                      response.context['page_obj'])
-        new_authorized_user = Client()
-        new_authorized_user.force_login(new_user)
-        response = new_authorized_user.get(reverse(
-            'posts:follow_index'
-        ))
-        self.assertNotIn(post,
-                         response.context['page_obj'])
+        response = self.authorized_client.get(reverse('posts:follow_index'))
+        self.assertIn(post, response.context['page_obj'])
+        self.assertEqual(post, response.context['page_obj'][0])
+        [obj.delete() for obj in (follow, post)]
+
+    def test_no_post_no_follower(self):
+        self.assertFalse(
+            Follow.objects.filter(
+                user=PostPagesTest.user,
+                author=PostPagesTest.user_for_follow
+            ).exists()
+        )
+        post = Post.objects.create(
+            text='test text',
+            author=PostPagesTest.user_for_follow
+        )
+        response = self.authorized_client.get(reverse('posts:follow_index'))
+        self.assertIsInstance(response.context['page_obj'], Page)
+        self.assertNotIn(post, response.context['page_obj'])
+        post.delete()
 
 
 class PaginatorPagesTest(TestCase):
