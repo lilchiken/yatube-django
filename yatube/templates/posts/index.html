@@ -6,9 +6,9 @@
 {% load thumbnail %}
 
   {% include 'includes/switcher.html' %}
-  {% load cache %}
-  {% cache 500 sidebar %}
   <h1>Последние обновления на сайте</h1>
+  {% load cache %}
+  {% cache 20 content page_obj.number %}
     {% for post in page_obj %}
     <article>
       <ul>
@@ -26,14 +26,18 @@
         <img class="card-img my-2" src="{{ im.url }}">
       {% endthumbnail %}
       <p>{{ post.text }}</p>
-      <a href="{% url 'posts:post_detail' post.id %}">
-        Страница поста
-      </a>
-        {% if post.group %}
+      <article>
+        <a href="{% url 'posts:post_detail' post.id %}">
+          Страница поста
+        </a>
+      </article>
+      {% if post.group %}
+        <article>
           <a href="{% url 'posts:group_list' post.group.slug %}">
             все записи группы
           </a>
-        {% endif %}
+        </article>
+      {% endif %}
     </article>
     {% if not forloop.last %}
           <hr>

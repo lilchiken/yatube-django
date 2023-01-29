@@ -76,6 +76,8 @@ class StaticURLTests(TestCase):
         self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_used_templates(self):
+        # Если я добавлю 404 страницу, то статус респонса будет не 200,
+        # как ожидается в цикле + test_guest_roots тоже сломается
         self.assertTemplateUsed(
             self.authorized_client.get('404'),
             'core/404.html'

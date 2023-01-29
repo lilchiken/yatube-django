@@ -26,6 +26,9 @@
         <img class="card-img my-2" src="{{ im.url }}">
       {% endthumbnail %}
       <p>{{ post.text }}</p>
+      <article>
+        <a href="{% url 'posts:post_detail' post.id %}">Страница поста</a>
+      </article>
     </article>
     {% if not forloop.last %}<hr>{% endif %}
     {% endfor %}

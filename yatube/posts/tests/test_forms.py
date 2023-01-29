@@ -63,7 +63,7 @@ class FormsTest(TestCase):
             post.text: data['text'],
             post.group: FormsTest.group,
             post.author: FormsTest.user,
-            post.image.name: f'posts/{uploaded.name}'
+            post.image.name: Post.image.field.upload_to + uploaded.name
         }
         for attrs, excepted in attrs_equal.items():
             with self.subTest(atrs=attrs):

@@ -31,7 +31,6 @@ class PostPagesTest(TestCase):
                                            content=EXAMPLE_SMALL_GIF,
                                            content_type='image/gif')
         cls.user = User.objects.create_user(username='test')
-        cls.user_for_delete = User.objects.create_user(username='delete')
         cls.user_for_follow = User.objects.create_user(username='follower')
         cls.group = Group.objects.create(
             title='test group',
@@ -42,10 +41,6 @@ class PostPagesTest(TestCase):
             author=PostPagesTest.user,
             group=PostPagesTest.group,
             image=PostPagesTest.small_gif
-        )
-        cls.post_for_delete = Post.objects.create(
-            text='post for delete',
-            author=PostPagesTest.user_for_delete
         )
         cls.TEMPLATES_PAGES_NAMES = {
             reverse('posts:group_list', kwargs={
@@ -68,6 +63,10 @@ class PostPagesTest(TestCase):
     def setUp(self):
         self.authorized_client = Client()
         self.authorized_client.force_login(PostPagesTest.user)
+        cache.clear()
+
+    def tearDown(self):
+        cache.clear()
 
     @classmethod
     def tearDownClass(cls):
@@ -121,17 +120,24 @@ class PostPagesTest(TestCase):
         )
         self.assertIsInstance(response.context['page_obj'],
                               Page)
-        self.assertIsInstance(response.context['page_obj'][1],
+        self.assertIsInstance(response.context['page_obj'][0],
                               Post)
-        obj = response.context['page_obj'][1]
+        obj = response.context['page_obj'][0]
         for test_atr, excepted_atr in self.set_dict(obj).items():
             with self.subTest(test_atr=test_atr):
                 self.assertEqual(test_atr, excepted_atr)
 
     def test_cache_main(self):
+        user_for_delete = User.objects.create_user(
+            username='delete'
+        )
+        Post.objects.create(
+            text='delete',
+            author=user_for_delete
+        )
         response = self.authorized_client.get(reverse('posts:main'))
         content_before_delete = response.content
-        PostPagesTest.user_for_delete.delete()
+        user_for_delete.delete()
         content_after_delete = response.content
         self.assertEqual(content_after_delete, content_before_delete)
         cache.clear()
@@ -251,7 +257,6 @@ class PostPagesTest(TestCase):
             kwargs={'username': PostPagesTest.user_for_follow.username}
         ))
         self.assertTrue(follow.exists())
-        follow.delete()
 
     def test_unfollow_users(self):
         Follow.objects.create(
@@ -270,7 +275,7 @@ class PostPagesTest(TestCase):
         )
 
     def test_new_post_followers(self):
-        follow = Follow.objects.create(
+        Follow.objects.create(
             user=PostPagesTest.user,
             author=PostPagesTest.user_for_follow
         )
@@ -281,7 +286,6 @@ class PostPagesTest(TestCase):
         response = self.authorized_client.get(reverse('posts:follow_index'))
         self.assertIn(post, response.context['page_obj'])
         self.assertEqual(post, response.context['page_obj'][0])
-        [obj.delete() for obj in (follow, post)]
 
     def test_no_post_no_follower(self):
         self.assertFalse(
@@ -297,7 +301,6 @@ class PostPagesTest(TestCase):
         response = self.authorized_client.get(reverse('posts:follow_index'))
         self.assertIsInstance(response.context['page_obj'], Page)
         self.assertNotIn(post, response.context['page_obj'])
-        post.delete()
 
 
 class PaginatorPagesTest(TestCase):

@@ -8,10 +8,6 @@ class PostForm(forms.ModelForm):
         model = Post
         fields = ('text', 'group', 'image')
 
-    def clean_text(self):
-        data = self.cleaned_data['text']
-        return data
-
 
 class CommentForm(forms.ModelForm):
     class Meta:

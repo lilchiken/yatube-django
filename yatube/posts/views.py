@@ -1,6 +1,4 @@
-from django.shortcuts import render, \
-    get_object_or_404, \
-    redirect
+from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
 from django.db.models.query import QuerySet
@@ -15,7 +13,7 @@ def create_page_obj_from_paginator(posts: QuerySet, request):
 
 
 def index(request):
-    posts = Post.objects.select_related('author', 'group').all()
+    posts = Post.objects.select_related('author', 'group')
     page_obj = create_page_obj_from_paginator(posts, request)
     context = {
         'page_obj': page_obj
@@ -25,7 +23,7 @@ def index(request):
 
 def group_posts(request, slug):
     group = get_object_or_404(Group, slug=slug)
-    posts = group.posts.select_related('author').all()
+    posts = group.posts.select_related('author')
     page_obj = create_page_obj_from_paginator(posts, request)
     context = {
         'group': group,
@@ -40,7 +38,7 @@ def profile(request, username):
         user=request.user,
         author=author
     ).exists()
-    posts = author.posts.select_related('group').all()
+    posts = author.posts.select_related('group')
     page_obj = create_page_obj_from_paginator(posts, request)
     context = {
         'following': following,
